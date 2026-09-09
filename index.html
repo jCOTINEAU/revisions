@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Révisions</title>
+<meta name="description" content="Révision des tables de multiplication et de l'alphabet, avec répétition espacée.">
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <button id="btn-back" class="icon-btn" hidden aria-label="Retour">←</button>
+  <h1 id="topbar-title">Révisions</h1>
+  <nav class="topnav">
+    <button id="nav-stats" class="icon-btn" aria-label="Statistiques">📊</button>
+    <button id="nav-settings" class="icon-btn" aria-label="Réglages">⚙</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ===================== ACCUEIL ===================== -->
+<section id="view-home" class="view">
+  <div class="deck-card" data-mode="mult">
+    <div class="deck-head">
+      <span class="deck-icon">×</span>
+      <div>
+        <h2>Multiplications</h2>
+        <p class="deck-sub">Tables de 1 à 12</p>
+      </div>
+    </div>
+    <div class="deck-counts">
+      <span class="count due"><b id="mult-due">0</b> à revoir</span>
+      <span class="count new"><b id="mult-new">0</b> nouvelles</span>
+    </div>
+    <div class="deck-actions">
+      <button class="btn primary" id="start-mult">Réviser</button>
+      <button class="btn ghost" id="practice-mult">Entraînement libre</button>
+    </div>
+  </div>
+
+  <div class="deck-card" data-mode="letters">
+    <div class="deck-head">
+      <span class="deck-icon">a→b</span>
+      <div>
+        <h2>Alphabet</h2>
+        <p class="deck-sub">Quelle lettre vient après ?</p>
+      </div>
+    </div>
+    <div class="deck-counts">
+      <span class="count due"><b id="letters-due">0</b> à revoir</span>
+      <span class="count new"><b id="letters-new">0</b> nouvelles</span>
+    </div>
+    <div class="deck-actions">
+      <button class="btn primary" id="start-letters">Réviser</button>
+      <button class="btn ghost" id="practice-letters">Entraînement libre</button>
+    </div>
+  </div>
+
+  <p class="home-footer" id="home-streak"></p>
+</section>
+
+<!-- ===================== SESSION ===================== -->
+<section id="view-drill" class="view" hidden>
+  <div class="progress"><div id="progress-bar"></div></div>
+  <div class="drill-meta"><span id="drill-count"></span><span id="drill-tag"></span></div>
+
+  <div class="question-zone">
+    <div id="question" class="question"></div>
+    <div id="answer-display" class="answer-display"></div>
+    <div id="feedback" class="feedback" hidden></div>
+  </div>
+
+  <div id="keypad" class="keypad"></div>
+</section>
+
+<!-- ===================== FIN DE SESSION ===================== -->
+<section id="view-summary" class="view" hidden>
+  <h2 class="summary-title">Session terminée 🎉</h2>
+  <div class="tiles" id="summary-tiles"></div>
+  <button class="btn primary big" id="summary-home">Retour à l'accueil</button>
+</section>
+
+<!-- ===================== STATS ===================== -->
+<section id="view-stats" class="view" hidden>
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="mult" role="tab">Multiplications</button>
+    <button class="tab" data-tab="letters" role="tab">Alphabet</button>
+  </div>
+
+  <div class="tiles" id="stats-tiles"></div>
+
+  <h3 class="section-title">Activité — 14 derniers jours</h3>
+  <div class="chart-card">
+    <div id="activity-chart" class="activity-chart"></div>
+    <div class="legend">
+      <span class="legend-item"><span class="swatch good"></span>✓ correct</span>
+      <span class="legend-item"><span class="swatch bad"></span>✗ erreur</span>
+    </div>
+  </div>
+
+  <h3 class="section-title" id="map-title">Maîtrise par carte</h3>
+  <div class="chart-card">
+    <div id="mastery-map"></div>
+    <div class="legend" id="mastery-legend"></div>
+  </div>
+
+  <div id="card-detail" class="card-detail" hidden></div>
+</section>
+
+<!-- ===================== RÉGLAGES ===================== -->
+<section id="view-settings" class="view" hidden>
+  <h3 class="section-title">Multiplications</h3>
+  <div class="setting-group" data-mode="mult">
+    <label>Nouvelles cartes / jour <input type="number" min="0" max="50" data-key="newPerDay"></label>
+    <label>Réponse « rapide » (s) <input type="number" min="1" max="30" step="0.5" data-key="fast"></label>
+    <label>Réponse « correcte » (s) <input type="number" min="2" max="60" step="0.5" data-key="ok"></label>
+  </div>
+  <h3 class="section-title">Alphabet</h3>
+  <div class="setting-group" data-mode="letters">
+    <label>Nouvelles cartes / jour <input type="number" min="0" max="25" data-key="newPerDay"></label>
+    <label>Réponse « rapide » (s) <input type="number" min="1" max="30" step="0.5" data-key="fast"></label>
+    <label>Réponse « correcte » (s) <input type="number" min="2" max="60" step="0.5" data-key="ok"></label>
+  </div>
+
+  <h3 class="section-title">Données</h3>
+  <div class="setting-actions">
+    <button class="btn ghost" id="btn-export">Exporter (JSON)</button>
+    <label class="btn ghost" id="btn-import-label">Importer<input type="file" id="btn-import" accept=".json" hidden></label>
+    <button class="btn danger" id="btn-reset">Tout effacer</button>
+  </div>
+  <p class="settings-note">Les données restent sur cet appareil (localStorage). Aucune donnée n'est envoyée en ligne.</p>
+</section>
+
+</main>
+
+<div id="tooltip" class="tooltip" hidden></div>
+
+<script src="./app.js"></script>
+</body>
+</html>
