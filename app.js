@@ -9,9 +9,36 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const TABLE_ORDER = [1, 2, 10, 5, 11, 3, 4, 6, 7, 8, 9, 12];
 const LOG_MAX = 20000;
 
+// mots français sans accent, classés par longueur puis difficulté ;
+// les mots en « z » (rebouclage z→a) ferment la liste
+const WORDS = [
+  'ami', 'mer', 'roi', 'feu', 'sac', 'lit', 'jeu', 'rue', 'vie', 'dos',
+  'bol', 'mur', 'pot', 'sel', 'bus',
+  'chat', 'loup', 'main', 'pied', 'lune', 'vent', 'jour', 'nuit', 'rose',
+  'bleu', 'vert', 'noir', 'gris', 'midi', 'lait', 'pain', 'roue', 'mois',
+  'banc', 'parc', 'fils', 'pont', 'four', 'tour',
+  'table', 'chien', 'fleur', 'plage', 'train', 'avion', 'tigre', 'sucre',
+  'pomme', 'poire', 'livre', 'stylo', 'temps', 'monde', 'plume', 'sport',
+  'radio', 'piano', 'robot', 'magie', 'neige', 'pluie', 'tasse', 'verre',
+  'sable', 'coeur',
+  'maison', 'jardin', 'soleil', 'orange', 'banane', 'cerise', 'violet',
+  'cheval', 'souris', 'mouton', 'poulet', 'bureau', 'crayon', 'cahier',
+  'chaise', 'montre', 'bougie', 'tortue', 'navire', 'cirque',
+  'bonjour', 'voiture', 'musique', 'cuisine', 'dauphin', 'branche',
+  'semaine', 'estomac', 'caillou', 'horloge',
+  'chocolat', 'montagne', 'papillon', 'escalier', 'aquarium',
+  'zoo', 'riz', 'gaz', 'zone', 'onze', 'douze', 'seize', 'quinze',
+];
+
+function shiftWord(w, d) {
+  return [...w].map(ch => String.fromCharCode((ch.charCodeAt(0) - 97 + d + 26) % 26 + 97)).join('');
+}
+
 const DEFAULT_SETTINGS = {
   mult:    { newPerDay: 24, fast: 4000, ok: 9000, practiceSize: 20 },
   letters: { newPerDay: 25, fast: 3000, ok: 6000, practiceSize: 20 },
+  // fast/ok en ms PAR LETTRE (seuils proportionnels à la longueur du mot)
+  cesar:   { newPerDay: 10, fast: 2000, ok: 4000, practiceSize: 10, wordCount: 50 },
 };
 
 let db = load();
@@ -24,7 +51,7 @@ function load() {
   d.log = Array.isArray(d.log) ? d.log : [];
   d.days = d.days || {};
   d.settings = d.settings || {};
-  for (const m of ['mult', 'letters']) {
+  for (const m of ['mult', 'letters', 'cesar']) {
     d.settings[m] = Object.assign({}, DEFAULT_SETTINGS[m], d.settings[m]);
   }
   // migration : anciens défauts (10/8 nouvelles par jour) → nouveaux défauts
@@ -61,8 +88,10 @@ function catalog(mode) {
   const ids = [];
   if (mode === 'mult') {
     for (const t of TABLE_ORDER) for (let i = 1; i <= 12; i++) ids.push(`m-${t}x${i}`);
-  } else {
+  } else if (mode === 'letters') {
     for (let i = 0; i < 25; i++) ids.push(`l-${ALPHABET[i]}`);
+  } else {
+    for (const w of WORDS.slice(0, db.settings.cesar.wordCount)) ids.push(`c-e-${w}`, `c-d-${w}`);
   }
   return ids;
 }
@@ -70,6 +99,14 @@ function cardInfo(id) {
   if (id[0] === 'm') {
     const [a, b] = id.slice(2).split('x').map(Number);
     return { mode: 'mult', a, b, prompt: `${a} × ${b}`, answer: String(a * b) };
+  }
+  if (id[0] === 'c') {
+    const dir = id[2];
+    const word = id.slice(4);
+    const cipher = shiftWord(word, 1);
+    return dir === 'e'
+      ? { mode: 'cesar', dir, word, prompt: word, answer: cipher }
+      : { mode: 'cesar', dir, word, prompt: cipher, answer: word };
   }
   const ch = id.slice(2);
   return { mode: 'letters', letter: ch, prompt: ch, answer: ALPHABET[ALPHABET.indexOf(ch) + 1] };
@@ -87,11 +124,12 @@ function getCard(id) {
 /* ================= répétition espacée (SM-2 simplifié) =================
    La note vient de la justesse ET du temps de réaction :
    faux → 1 ; juste & rapide → 5 ; juste → 4 ; juste mais lent → 3 */
-function quality(mode, correct, ms) {
+function quality(mode, correct, ms, len = 1) {
   if (!correct) return 1;
   const cfg = db.settings[mode];
-  if (ms <= cfg.fast) return 5;
-  if (ms <= cfg.ok) return 4;
+  const scale = mode === 'cesar' ? len : 1; // seuils par lettre pour les mots
+  if (ms <= cfg.fast * scale) return 5;
+  if (ms <= cfg.ok * scale) return 4;
   return 3;
 }
 
@@ -167,7 +205,7 @@ function show(view) {
   window.scrollTo(0, 0);
 }
 
-const MODE_LABEL = { mult: 'Multiplications', letters: 'Alphabet' };
+const MODE_LABEL = { mult: 'Multiplications', letters: 'Alphabet', cesar: 'Code secret' };
 
 function goto(view) {
   const target = view === 'home' ? '' : `#${view}`;
@@ -184,7 +222,7 @@ window.addEventListener('hashchange', () => {
 /* ================= accueil ================= */
 
 function renderHome() {
-  for (const mode of ['mult', 'letters']) {
+  for (const mode of ['mult', 'letters', 'cesar']) {
     const due = dueIds(mode).length;
     const nw = Math.min(newAllowance(mode), newIds(mode, Infinity).length);
     $(`#${mode}-due`).textContent = due;
@@ -219,7 +257,8 @@ function startSession(mode, practice) {
     const scored = seen.map(id => {
       const c = db.cards[id];
       const acc = c.ok / c.reps;
-      const slow = c.msN ? Math.min(1, (c.msSum / c.msN) / db.settings[mode].ok) : 1;
+      const okMs = db.settings[mode].ok * (mode === 'cesar' ? cardInfo(id).answer.length : 1);
+      const slow = c.msN ? Math.min(1, (c.msSum / c.msN) / okMs) : 1;
       return { id, w: (1 - acc) * 2 + slow };
     }).sort((a, b) => b.w - a.w);
     const weak = scored.slice(0, Math.min(seen.length, Math.ceil(size * 0.6))).map(s => s.id);
@@ -249,9 +288,14 @@ function nextCard() {
   session.input = '';
   const info = cardInfo(session.current);
   const q = $('#question');
+  q.classList.toggle('word', info.mode === 'cesar');
   if (info.mode === 'mult') {
     q.innerHTML = '';
     q.textContent = `${info.prompt} = ?`;
+    $('#answer-display').hidden = false;
+  } else if (info.mode === 'cesar') {
+    const hint = info.dir === 'e' ? 'Code le mot (chaque lettre +1)' : 'Décode le mot (chaque lettre −1)';
+    q.innerHTML = `<span class="q-hint">${hint}</span>${info.prompt} → ?`;
     $('#answer-display').hidden = false;
   } else {
     q.innerHTML = `<span class="q-hint">Quelle lettre vient après…</span>${info.letter} → ?`;
@@ -304,7 +348,7 @@ function submit(ans) {
       db.days[t] = db.days[t] || {};
       db.days[t][info.mode] = (db.days[t][info.mode] || 0) + 1;
     }
-    schedule(id, quality(info.mode, correct, ms));
+    schedule(id, quality(info.mode, correct, ms, info.answer.length));
   }
   save();
 
@@ -353,7 +397,7 @@ function endSession() {
 function buildKeypad(mode) {
   const kp = $('#keypad');
   kp.innerHTML = '';
-  kp.className = 'keypad' + (mode === 'letters' ? ' letters' : '');
+  kp.className = 'keypad' + (mode !== 'mult' ? ' letters' : '');
   if (mode === 'mult') {
     const rows = [['7', '8', '9'], ['4', '5', '6'], ['1', '2', '3'], ['⌫', '0', 'OK']];
     for (const row of rows) {
@@ -377,12 +421,36 @@ function buildKeypad(mode) {
         const b = document.createElement('button');
         b.className = 'key letter';
         b.textContent = ch;
-        b.addEventListener('pointerdown', e => { e.preventDefault(); if (session && !session.busy) submit(ch); });
+        b.addEventListener('pointerdown', e => {
+          e.preventDefault();
+          if (!session || session.busy) return;
+          if (mode === 'letters') submit(ch); else pressCesar(ch.toLowerCase());
+        });
+        r.appendChild(b);
+      }
+      kp.appendChild(r);
+    }
+    if (mode === 'cesar') {
+      const r = document.createElement('div');
+      r.className = 'keypad-row';
+      for (const k of ['⌫', 'OK']) {
+        const b = document.createElement('button');
+        b.className = 'key' + (k === 'OK' ? ' validate' : ' action');
+        b.textContent = k;
+        b.addEventListener('pointerdown', e => { e.preventDefault(); pressCesar(k); });
         r.appendChild(b);
       }
       kp.appendChild(r);
     }
   }
+}
+
+function pressCesar(k) {
+  if (!session || session.busy) return;
+  if (k === 'OK') { submit(session.input); return; }
+  if (k === '⌫') session.input = session.input.slice(0, -1);
+  else if (session.input.length < 12) session.input += k;
+  renderInput();
 }
 
 function pressNum(k) {
@@ -400,6 +468,10 @@ document.addEventListener('keydown', e => {
     if (/^[0-9]$/.test(e.key)) pressNum(e.key);
     else if (e.key === 'Backspace') pressNum('⌫');
     else if (e.key === 'Enter') pressNum('OK');
+  } else if (session.mode === 'cesar') {
+    if (/^[a-zA-Z]$/.test(e.key)) pressCesar(e.key.toLowerCase());
+    else if (e.key === 'Backspace') pressCesar('⌫');
+    else if (e.key === 'Enter') pressCesar('OK');
   } else if (/^[a-zA-Z]$/.test(e.key) && !session.busy) {
     submit(e.key.toUpperCase());
   }
@@ -445,8 +517,10 @@ function renderStats() {
   ].map(([v, l]) => `<div class="tile"><div class="tile-value">${v}</div><div class="tile-label">${l}</div></div>`).join('');
 
   renderActivity(mode);
-  if (mode === 'mult') renderMultMap(); else renderLettersMap();
-  $('#map-title').textContent = mode === 'mult' ? 'Maîtrise par multiplication' : 'Maîtrise par lettre';
+  if (mode === 'mult') renderMultMap(); else if (mode === 'letters') renderLettersMap(); else renderCesarMap();
+  $('#map-title').textContent = {
+    mult: 'Maîtrise par multiplication', letters: 'Maîtrise par lettre', cesar: 'Maîtrise par mot (+1 codage · −1 décodage)',
+  }[mode];
   $('#mastery-legend').innerHTML =
     `<span class="legend-item"><span class="swatch" style="background:var(--hairline)"></span>pas encore vue</span>` +
     RAMP.map((h, i) => i % 2 ? '' : `<span class="legend-item"><span class="swatch" style="background:${h}"></span>${['< 50 %', '70–80 %', '90–99 %'][i / 2]}</span>`).join('') +
@@ -517,11 +591,22 @@ function renderLettersMap() {
   }).join('') + '</div>';
 }
 
+function renderCesarMap() {
+  const map = $('#mastery-map');
+  map.innerHTML = '<div class="letters-map cesar-map">' + catalog('cesar').map(id => {
+    const info = cardInfo(id);
+    const col = cellColor(id);
+    const c = db.cards[id];
+    const cls = col ? (accuracyStep(c) >= 4 ? 'deep' : accuracyStep(c) >= 2 ? 'mid' : '') : 'unseen';
+    return `<button class="cell ${cls}" data-id="${id}"${col ? ` style="background:${col}"` : ''}>${info.word} ${info.dir === 'e' ? '+1' : '−1'}</button>`;
+  }).join('') + '</div>';
+}
+
 function showCardDetail(id) {
   const info = cardInfo(id);
   const c = db.cards[id];
   const el = $('#card-detail');
-  const title = info.mode === 'mult' ? `${info.prompt} = ${info.answer}` : `${info.letter} → ${info.answer}`;
+  const title = info.mode === 'mult' ? `${info.prompt} = ${info.answer}` : `${info.prompt} → ${info.answer}`;
   if (!c || !c.reps) {
     el.innerHTML = `<h4>${title}</h4><p style="margin:0;color:var(--muted)">Pas encore vue.</p>`;
   } else {
@@ -612,8 +697,10 @@ $('#btn-reset').addEventListener('click', () => {
 
 $('#start-mult').addEventListener('click', () => startSession('mult', false));
 $('#start-letters').addEventListener('click', () => startSession('letters', false));
+$('#start-cesar').addEventListener('click', () => startSession('cesar', false));
 $('#practice-mult').addEventListener('click', () => startSession('mult', true));
 $('#practice-letters').addEventListener('click', () => startSession('letters', true));
+$('#practice-cesar').addEventListener('click', () => startSession('cesar', true));
 $('#summary-home').addEventListener('click', () => goto('home'));
 $('#summary-again').addEventListener('click', () => {
   const m = lastSummary.mode;

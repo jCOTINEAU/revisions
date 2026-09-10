@@ -132,6 +132,8 @@ main {
 }
 .question { font-size: 44px; font-weight: 700; letter-spacing: 1px; }
 .question .q-hint { font-size: 20px; font-weight: 500; color: var(--ink-2); display: block; text-align: center; margin-bottom: 6px; }
+.question.word { font-size: 32px; letter-spacing: 2px; text-align: center; }
+.question.word .q-hint { font-size: 15px; letter-spacing: 0; }
 .answer-display {
   min-height: 46px; font-size: 38px; font-weight: 700;
   color: var(--accent); font-variant-numeric: tabular-nums;
@@ -239,6 +241,7 @@ main {
   background: var(--hairline); cursor: pointer; font-family: inherit;
 }
 .cell.unseen { background: var(--hairline); }
+.cesar-map .cell { width: calc(33.33% - 4px); font-size: 11px; padding: 7px 0; }
 .letters-map .cell.deep, .letters-map .cell.mid { color: #fff; }
 
 .card-detail {

@@ -62,6 +62,24 @@
     </div>
   </div>
 
+  <div class="deck-card" data-mode="cesar">
+    <div class="deck-head">
+      <span class="deck-icon">+1</span>
+      <div>
+        <h2>Code secret</h2>
+        <p class="deck-sub">César +1 : lune → mvof</p>
+      </div>
+    </div>
+    <div class="deck-counts">
+      <span class="count due"><b id="cesar-due">0</b> à revoir</span>
+      <span class="count new"><b id="cesar-new">0</b> nouvelles</span>
+    </div>
+    <div class="deck-actions">
+      <button class="btn primary" id="start-cesar">Réviser</button>
+      <button class="btn ghost" id="practice-cesar">Entraînement libre</button>
+    </div>
+  </div>
+
   <p class="home-footer" id="home-streak"></p>
 </section>
 
@@ -90,8 +108,9 @@
 <!-- ===================== STATS ===================== -->
 <section id="view-stats" class="view" hidden>
   <div class="tabs" role="tablist">
-    <button class="tab active" data-tab="mult" role="tab">Multiplications</button>
+    <button class="tab active" data-tab="mult" role="tab">Multipl.</button>
     <button class="tab" data-tab="letters" role="tab">Alphabet</button>
+    <button class="tab" data-tab="cesar" role="tab">Code</button>
   </div>
 
   <div class="tiles" id="stats-tiles"></div>
@@ -129,6 +148,15 @@
     <label>Réponse « rapide » (s) <input type="number" min="1" max="30" step="0.5" data-key="fast"></label>
     <label>Réponse « correcte » (s) <input type="number" min="2" max="60" step="0.5" data-key="ok"></label>
     <label>Taille de l'entraînement libre <input type="number" min="5" max="50" data-key="practiceSize"></label>
+  </div>
+
+  <h3 class="section-title">Code secret (César +1)</h3>
+  <div class="setting-group" data-mode="cesar">
+    <label>Nombre de mots actifs <input type="number" min="5" max="108" data-key="wordCount"></label>
+    <label>Nouvelles cartes / jour <input type="number" min="0" max="216" data-key="newPerDay"></label>
+    <label>« Rapide » (s / lettre) <input type="number" min="0.5" max="10" step="0.5" data-key="fast"></label>
+    <label>« Correct » (s / lettre) <input type="number" min="1" max="20" step="0.5" data-key="ok"></label>
+    <label>Taille de l'entraînement libre <input type="number" min="5" max="100" data-key="practiceSize"></label>
   </div>
 
   <h3 class="section-title">Données</h3>

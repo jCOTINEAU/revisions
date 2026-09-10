@@ -3,7 +3,9 @@
 Mini PWA sobre pour réviser :
 
 - **les tables de multiplication** (1 à 12) — on tape le résultat sur un pavé numérique intégré ;
-- **l'alphabet** (quelle lettre vient après ?) — clavier AZERTY intégré, dont l'ordre ne révèle pas la réponse.
+- **l'alphabet** (quelle lettre vient après ?) — clavier AZERTY intégré, dont l'ordre ne révèle pas la réponse ;
+- **le code secret César +1** (`lune → mvof`) — coder et décoder des mots français
+  (liste embarquée, classée par longueur puis difficulté, nombre de mots actifs réglable).
 
 Chaque réponse est chronométrée. Un système de répétition espacée type Anki (SM-2 simplifié)
 planifie les révisions quotidiennes : la note d'une carte dépend de la justesse **et** du temps
