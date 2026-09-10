@@ -1,5 +1,5 @@
 'use strict';
-const CACHE = 'revisions-v1';
+const CACHE = 'revisions-v2';
 const ASSETS = [
   './',
   './index.html',

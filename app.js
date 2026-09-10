@@ -10,8 +10,8 @@ const TABLE_ORDER = [1, 2, 10, 5, 11, 3, 4, 6, 7, 8, 9, 12];
 const LOG_MAX = 20000;
 
 const DEFAULT_SETTINGS = {
-  mult:    { newPerDay: 10, fast: 4000, ok: 9000 },
-  letters: { newPerDay: 8,  fast: 3000, ok: 6000 },
+  mult:    { newPerDay: 24, fast: 4000, ok: 9000, practiceSize: 20 },
+  letters: { newPerDay: 25, fast: 3000, ok: 6000, practiceSize: 20 },
 };
 
 let db = load();
@@ -27,6 +27,9 @@ function load() {
   for (const m of ['mult', 'letters']) {
     d.settings[m] = Object.assign({}, DEFAULT_SETTINGS[m], d.settings[m]);
   }
+  // migration : anciens défauts (10/8 nouvelles par jour) → nouveaux défauts
+  if (d.settings.mult.newPerDay === 10) d.settings.mult.newPerDay = 24;
+  if (d.settings.letters.newPerDay === 8) d.settings.letters.newPerDay = 25;
   return d;
 }
 
@@ -188,7 +191,6 @@ function renderHome() {
     $(`#${mode}-new`).textContent = nw;
     $(`#start-${mode}`).disabled = (due + nw === 0);
     $(`#start-${mode}`).textContent = (due + nw === 0) ? 'Terminé pour aujourd’hui ✓' : 'Réviser';
-    $(`#practice-${mode}`).disabled = !catalog(mode).some(id => db.cards[id] && db.cards[id].reps > 0);
   }
   const s = streak();
   $('#home-streak').textContent = s > 0 ? `🔥 ${s} jour${s > 1 ? 's' : ''} d'affilée` : '';
@@ -209,8 +211,21 @@ let lastSummary = null;
 function startSession(mode, practice) {
   let queue;
   if (practice) {
-    const seen = catalog(mode).filter(id => db.cards[id] && db.cards[id].reps > 0);
-    queue = shuffle(seen).slice(0, 10);
+    // session étendue, rejouable à volonté : ~60 % de cartes faibles
+    // (précision basse, temps lents), le reste pioché dans tout le paquet
+    const size = db.settings[mode].practiceSize;
+    const all = catalog(mode);
+    const seen = all.filter(id => db.cards[id] && db.cards[id].reps > 0);
+    const scored = seen.map(id => {
+      const c = db.cards[id];
+      const acc = c.ok / c.reps;
+      const slow = c.msN ? Math.min(1, (c.msSum / c.msN) / db.settings[mode].ok) : 1;
+      return { id, w: (1 - acc) * 2 + slow };
+    }).sort((a, b) => b.w - a.w);
+    const weak = scored.slice(0, Math.min(seen.length, Math.ceil(size * 0.6))).map(s => s.id);
+    const picked = new Set(weak);
+    const rest = shuffle(all.filter(id => !picked.has(id))).slice(0, Math.max(0, size - weak.length));
+    queue = shuffle(weak.concat(rest));
   } else {
     const due = shuffle(dueIds(mode));
     const news = newIds(mode, newAllowance(mode));
@@ -318,6 +333,7 @@ function endSession() {
   const s = session;
   const okMs = s.msList.length ? s.msList : [0];
   lastSummary = {
+    mode: s.mode,
     tiles: [
       [s.done, 'réponses'],
       [`${s.done ? Math.round((s.correct / s.done) * 100) : 0} %`, 'de réussite'],
@@ -544,7 +560,7 @@ function renderSettings() {
     const mode = g.dataset.mode;
     g.querySelectorAll('input').forEach(inp => {
       const key = inp.dataset.key;
-      inp.value = key === 'newPerDay' ? db.settings[mode][key] : db.settings[mode][key] / 1000;
+      inp.value = (key === 'fast' || key === 'ok') ? db.settings[mode][key] / 1000 : db.settings[mode][key];
     });
   });
 }
@@ -555,7 +571,7 @@ document.querySelectorAll('.setting-group input').forEach(inp => {
     const key = inp.dataset.key;
     const v = parseFloat(inp.value);
     if (isNaN(v) || v < 0) return renderSettings();
-    db.settings[mode][key] = key === 'newPerDay' ? Math.round(v) : Math.round(v * 1000);
+    db.settings[mode][key] = (key === 'fast' || key === 'ok') ? Math.round(v * 1000) : Math.round(v);
     save();
   });
 });
@@ -599,6 +615,12 @@ $('#start-letters').addEventListener('click', () => startSession('letters', fals
 $('#practice-mult').addEventListener('click', () => startSession('mult', true));
 $('#practice-letters').addEventListener('click', () => startSession('letters', true));
 $('#summary-home').addEventListener('click', () => goto('home'));
+$('#summary-again').addEventListener('click', () => {
+  const m = lastSummary.mode;
+  // s'il reste des cartes dues/nouvelles → session de révision, sinon entraînement libre
+  const daily = dueIds(m).length + Math.min(newAllowance(m), newIds(m, Infinity).length);
+  startSession(m, daily === 0);
+});
 $('#nav-stats').addEventListener('click', () => goto('stats'));
 $('#nav-settings').addEventListener('click', () => goto('settings'));
 $('#btn-back').addEventListener('click', () => {

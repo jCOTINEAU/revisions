@@ -83,7 +83,8 @@
 <section id="view-summary" class="view" hidden>
   <h2 class="summary-title">Session terminée 🎉</h2>
   <div class="tiles" id="summary-tiles"></div>
-  <button class="btn primary big" id="summary-home">Retour à l'accueil</button>
+  <button class="btn primary big" id="summary-again">Encore une session</button>
+  <button class="btn ghost big" id="summary-home">Retour à l'accueil</button>
 </section>
 
 <!-- ===================== STATS ===================== -->
@@ -117,15 +118,17 @@
 <section id="view-settings" class="view" hidden>
   <h3 class="section-title">Multiplications</h3>
   <div class="setting-group" data-mode="mult">
-    <label>Nouvelles cartes / jour <input type="number" min="0" max="50" data-key="newPerDay"></label>
+    <label>Nouvelles cartes / jour <input type="number" min="0" max="144" data-key="newPerDay"></label>
     <label>Réponse « rapide » (s) <input type="number" min="1" max="30" step="0.5" data-key="fast"></label>
     <label>Réponse « correcte » (s) <input type="number" min="2" max="60" step="0.5" data-key="ok"></label>
+    <label>Taille de l'entraînement libre <input type="number" min="5" max="144" data-key="practiceSize"></label>
   </div>
   <h3 class="section-title">Alphabet</h3>
   <div class="setting-group" data-mode="letters">
     <label>Nouvelles cartes / jour <input type="number" min="0" max="25" data-key="newPerDay"></label>
     <label>Réponse « rapide » (s) <input type="number" min="1" max="30" step="0.5" data-key="fast"></label>
     <label>Réponse « correcte » (s) <input type="number" min="2" max="60" step="0.5" data-key="ok"></label>
+    <label>Taille de l'entraînement libre <input type="number" min="5" max="50" data-key="practiceSize"></label>
   </div>
 
   <h3 class="section-title">Données</h3>
