@@ -94,6 +94,25 @@ main {
 .count b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .deck-actions { display: flex; gap: 10px; }
 
+.seg {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.seg button {
+  flex: 1;
+  padding: 9px 4px;
+  border: none;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 13px; font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button.active { background: var(--accent); color: var(--accent-ink); }
+
 .btn {
   border: 1px solid var(--border);
   border-radius: 12px;

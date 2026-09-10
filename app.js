@@ -38,7 +38,7 @@ const DEFAULT_SETTINGS = {
   mult:    { newPerDay: 24, fast: 4000, ok: 9000, practiceSize: 20 },
   letters: { newPerDay: 25, fast: 3000, ok: 6000, practiceSize: 20 },
   // fast/ok en ms PAR LETTRE (seuils proportionnels à la longueur du mot)
-  cesar:   { newPerDay: 10, fast: 2000, ok: 4000, practiceSize: 10, wordCount: 50 },
+  cesar:   { newPerDay: 10, fast: 2000, ok: 4000, practiceSize: 10, wordCount: 50, dir: 'both' },
 };
 
 let db = load();
@@ -84,14 +84,18 @@ function dayKey(ts) {
 }
 
 /* catalogue de cartes */
-function catalog(mode) {
+function catalog(mode, allDirs = false) {
   const ids = [];
   if (mode === 'mult') {
     for (const t of TABLE_ORDER) for (let i = 1; i <= 12; i++) ids.push(`m-${t}x${i}`);
   } else if (mode === 'letters') {
     for (let i = 0; i < 25; i++) ids.push(`l-${ALPHABET[i]}`);
   } else {
-    for (const w of WORDS.slice(0, db.settings.cesar.wordCount)) ids.push(`c-e-${w}`, `c-d-${w}`);
+    const dir = allDirs ? 'both' : db.settings.cesar.dir;
+    for (const w of WORDS.slice(0, db.settings.cesar.wordCount)) {
+      if (dir !== 'd') ids.push(`c-e-${w}`);
+      if (dir !== 'e') ids.push(`c-d-${w}`);
+    }
   }
   return ids;
 }
@@ -230,6 +234,8 @@ function renderHome() {
     $(`#start-${mode}`).disabled = (due + nw === 0);
     $(`#start-${mode}`).textContent = (due + nw === 0) ? 'Terminé pour aujourd’hui ✓' : 'Réviser';
   }
+  document.querySelectorAll('#cesar-dir button').forEach(b =>
+    b.classList.toggle('active', b.dataset.dir === db.settings.cesar.dir));
   const s = streak();
   $('#home-streak').textContent = s > 0 ? `🔥 ${s} jour${s > 1 ? 's' : ''} d'affilée` : '';
 }
@@ -496,7 +502,7 @@ function accuracyStep(c) {
 function renderStats() {
   const mode = statsMode;
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === mode));
-  const all = catalog(mode);
+  const all = catalog(mode, true); // stats : toujours les deux sens du César
   const seen = all.filter(id => db.cards[id] && db.cards[id].reps > 0);
   const mastered = seen.filter(id => db.cards[id].interval >= 21);
   let reps = 0, ok = 0, msSum = 0, msN = 0;
@@ -593,7 +599,7 @@ function renderLettersMap() {
 
 function renderCesarMap() {
   const map = $('#mastery-map');
-  map.innerHTML = '<div class="letters-map cesar-map">' + catalog('cesar').map(id => {
+  map.innerHTML = '<div class="letters-map cesar-map">' + catalog('cesar', true).map(id => {
     const info = cardInfo(id);
     const col = cellColor(id);
     const c = db.cards[id];
@@ -701,6 +707,11 @@ $('#start-cesar').addEventListener('click', () => startSession('cesar', false));
 $('#practice-mult').addEventListener('click', () => startSession('mult', true));
 $('#practice-letters').addEventListener('click', () => startSession('letters', true));
 $('#practice-cesar').addEventListener('click', () => startSession('cesar', true));
+document.querySelectorAll('#cesar-dir button').forEach(b => b.addEventListener('click', () => {
+  db.settings.cesar.dir = b.dataset.dir;
+  save();
+  renderHome();
+}));
 $('#summary-home').addEventListener('click', () => goto('home'));
 $('#summary-again').addEventListener('click', () => {
   const m = lastSummary.mode;
